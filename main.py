@@ -31,62 +31,60 @@ class FSMlogic(StatesGroup):
     request = State()
     finish = State()
 
-
-object1 = 'АртСити'
-object2 = 'Батареон'
-object3 = 'Статум'
-object4 = 'Уно'
-
-
 text = '1234567'
-button1 = KeyboardButton(text='1.Создать заявку')
-button2 = KeyboardButton(text='2.На согласовании')
-button3 = KeyboardButton(text='3.Отклоненные')
 
-button4 = InlineKeyboardButton(text='Да', callback_data='yes')
-button5 = InlineKeyboardButton(text='Нет', callback_data='no')
 
-button6 = InlineKeyboardButton(text='Назад', callback_data='cancel')
+def start() -> InlineKeyboardMarkup:
+    button = [
+        [InlineKeyboardButton(text='1. Создать заявку', callback_data='create')],
+        [InlineKeyboardButton(text='2. На согласовании', callback_data='accept')],
+        [InlineKeyboardButton(text='3. Отклоненные', callback_data='reject')]
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=button)
+    return keyboard
 
-button7 = InlineKeyboardButton(text=object1, callback_data='1.artcity')
-button8 = InlineKeyboardButton(text=object2, callback_data='2.batareon')
-button9 = InlineKeyboardButton(text=object3, callback_data='3.statum')
-button10 = InlineKeyboardButton(text=object4, callback_data='4.uno')
 
-keyboard_1 = ReplyKeyboardMarkup(keyboard=[[button1],
-                                         [button2],
-                                         [button3]])
+yes = InlineKeyboardButton(text='Да', callback_data='yes')
+no = InlineKeyboardButton(text='Нет', callback_data='no')
 
-keyboard_2 = InlineKeyboardMarkup(inline_keyboard=[[button4, button5]])
+cancel = InlineKeyboardButton(text='Назад', callback_data='cancel')
 
-keyboard_3 = InlineKeyboardMarkup(inline_keyboard=[[button7],
-                                                   [button8],
-                                                   [button9],
-                                                   [button10]])
+def object() -> InlineKeyboardMarkup:
+    button = [
+        [InlineKeyboardButton(text='1. АртСити', callback_data='artcity')],
+        [InlineKeyboardButton(text='2. Батареон', callback_data='batareon')],
+        [InlineKeyboardButton(text='3. Статум', callback_data='statum')],
+        [InlineKeyboardButton(text='4. Уно', callback_data='uno')]
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=button)
+    return keyboard
 
 
 @dp.message(Command(commands=['start']))
 async def cmd_start(message: types.Message):
     await message.answer(f'Введите идентификатор')
 
-@dp.message(F.text == '1234567')
+@dp.callback_query(F.text == '1234567')
 async def cmd_start_answer(message: types.Message):
     if text == '1234567':
-        await message.answer(f'Добрый день, {message.from_user.full_name}. Выберите действия:',reply_markup=keyboard_1)
+        await message.answer(f'Добрый день, {message.from_user.full_name}. Выберите действия:', reply_markup=start())
 
-@dp.message(Command(commands='logic'), StateFilter(default_state)) #handler keyboard add object
-async def start_logic(message: Message, state: FSMContext):
-    await message.answer(text='Выберите объект:',reply_markup=keyboard_3)
-    #button7 = InlineKeyboardButton(text=object1, callback_data='1.artcity')
-    #button8 = InlineKeyboardButton(text=object2, callback_data='2.batareon')
-    #button9 = InlineKeyboardButton(text=object3, callback_data='3.statum')
-    #button10 = InlineKeyboardButton(text=object4, callback_data='4.uno')
-    #keyboard: list[list[InlineKeyboardButton]] = [[button7],
-                                                   #[button8],
-                                                   #[button9],
-                                                   #[button10]]
-    await state.set_state(FSMlogic.object_all)
-@dp.message(StateFilter(FSMlogic.title),F.data.in_(['artcity','batareon','statum','uno']))#hanlder add data next object (request, accepted, denied)
+
+@dp.callback_query(F.data == 'create')
+async def command_object(message: Message, state: FSMContext):
+
+    await message.answer(text='Выберите объект:', reply_markup=object())
+
+#@dp.callback_query(F.text == '1. Создать заявку')
+#async def process_create(callback: CallbackQuery, state: FSMContext):
+#    await callback.message.answer(text='Выберите объект:', reply_markup=keyboard_3)
+
+
+#@dp.message(Command(commands='logic'), StateFilter(default_state)) #handler keyboard add object
+#async def start_logic(message: Message, state: FSMContext):
+   # await message.answer(text='Выберите объект:',reply_markup=keyboard_3)
+   # await state.set_state(FSMlogic.object_all)
+@dp.callback_query(StateFilter(FSMlogic.title),F.data.in_(['artcity', 'batareon', 'statum', 'uno']))#hanlder add data next object (request, accepted, denied)
 async def start_title(callback: CallbackQuery, state: FSMContext):
     await state.update_data(object=callback.data)
     await callback.message.answer(text='Пожалуйста, введите ваш заголовок:')
@@ -111,7 +109,7 @@ async def start_request(message: Message, state: FSMContext):
 @dp.callback_query(StateFilter(FSMlogic.finish))
 async def process_finish_test(callback: CallbackQuery, state: FSMContext):
     await state.update_data(request=callback.data == text)
-    await callback.message.edit_text(text='Вы ввели полный список или хотите его дополнить ?', reply_markup=keyboard_2)
+    await callback.message.edit_text(text='Вы ввели полный список или хотите его дополнить ?')
     user_dict[callback.from_user.id] = await state.get_data()
     await state.clear()
     await callback.message.answer(text='Для просмотра введеного вами запроса введите /show')
